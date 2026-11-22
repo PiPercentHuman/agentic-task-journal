@@ -247,7 +247,9 @@ async function refresh() {
 		state.board = first ? await api.detect() : await api.board();
 		showError(null); drawProjects(); drawBoard();
 		// Open on the work in progress, not on an empty Backlog (on a phone one column fills the screen).
-		if (first) $(`.column[data-col="doing"]`)?.scrollIntoView({ inline: "start", block: "nearest" });
+		// Only sideways: scrollIntoView also moved the page down and hid the column titles under the header.
+		const doing = $(`.column[data-col="doing"]`);
+		if (first && doing && innerWidth < 700) $("#board").scrollLeft = doing.offsetLeft - $("#board").offsetLeft - 16;
 	}
 	catch (e) { showError(e); }
 }
