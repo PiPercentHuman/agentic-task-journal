@@ -1,0 +1,24 @@
+{
+  "kind": "full3d-video",
+  "description": "A new channel video in the full3d format (VideoGen_orig, .claude/skills/full3d/SKILL.md). ref = the video's folder, e.g. output/<slug>. A step with done_when is ticked by `board check` (and the Stop hook) once its file is there; the others are ticked by hand.",
+  "template": "toolchain/templates/full3d-video",
+  "steps": [
+    { "key": "research", "title": "Research: two demand probes, the gap, primary sources verified", "done_when": { "edited": "shared/research.json" } },
+    { "key": "plan", "title": "PLAN.md filled (section 4: the world), shown before paid or long runs", "done_when": { "edited": "PLAN.md" } },
+    { "key": "experiment", "title": "Experiment run, every trial replayable (github/<slug>/replay.py)", "done_when": { "changed": "github/*/runs/*.jsonl" } },
+    { "key": "facts", "title": "facts.py computes and asserts every figure", "done_when": { "edited": "footage/facts.py" } },
+    { "key": "narration", "title": "NARRATION.md drafted (writing skills read first)", "done_when": { "edited": "english/NARRATION.md" } },
+    { "key": "story", "title": "make_story + story review recorded", "done_when": { "exists": "english/story-review.json" } },
+    { "key": "voice", "title": "Voice: takes narrated, voice-range passed", "done_when": { "glob": "english/audio/*.wav" } },
+    { "key": "world", "title": "The 3D world and shots.json built at Anatomy density", "done_when": { "edited": "world/world.html" } },
+    { "key": "timing", "title": "assemble parts + timing", "done_when": { "exists": "world/film.json" } },
+    { "key": "preview", "title": "Preview stills of every shot looked at", "done_when": { "glob": "world/prev/*.png" } },
+    { "key": "film", "title": "World filmed whole" },
+    { "key": "inserts", "title": "Inserts: real files filmed, fair-use clips with their defence" },
+    { "key": "cut", "title": "Cut: full3d-check passes, voice + bumper + bed", "done_when": { "exists": "english/renders/video.mp4" } },
+    { "key": "subs", "title": "Subtitles", "done_when": { "exists": "english/renders/video.srt" } },
+    { "key": "look", "title": "Checked by looking: frame sheets opened, listening list given" },
+    { "key": "packaging", "title": "Title, thumbnail, description, tags" },
+    { "key": "ship", "title": "Shipped and archived to the SSD" }
+  ]
+}

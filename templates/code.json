@@ -1,0 +1,11 @@
+{
+  "kind": "code",
+  "description": "A software change: feature, fix or tool.",
+  "steps": [
+    { "key": "understand", "title": "Read the code and the ask; plan written" },
+    { "key": "build", "title": "Built" },
+    { "key": "test", "title": "Tested (the real thing run, not just the tests)" },
+    { "key": "docs", "title": "README / docs updated" },
+    { "key": "ship", "title": "Committed (pushed only when asked)" }
+  ]
+}

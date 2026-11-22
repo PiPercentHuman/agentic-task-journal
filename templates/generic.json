@@ -1,0 +1,5 @@
+{
+  "kind": "generic",
+  "description": "Any job. Steps come from the plan: `board step <id> \"<title>\"`, or a todo list the agent writes (mirrored by the hook).",
+  "steps": []
+}

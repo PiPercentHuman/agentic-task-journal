@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Task Board</title>
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Task%20Board%22%2C%22short_name%22%3A%22Board%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2314161a%22%2C%22theme_color%22%3A%22%2314161a%22%2C%22start_url%22%3A%22.%22%7D">
+<style>
+:root {
+	--bg: #f5f5f2; --panel: #ffffff; --col: #ecece7; --ink: #1d1f23; --muted: #6b6f76; --line: #d9d9d2;
+	--accent: #3b6fd8; --ok: #2f8f5b; --warn: #c27a12; --bad: #c2412d; --chip: #e4e6ea; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+	--bg: #14161a; --panel: #1d2026; --col: #181b20; --ink: #e6e7ea; --muted: #9096a0; --line: #2c3038;
+	--accent: #6d9bff; --ok: #4fbf82; --warn: #e0a040; --bad: #e86a55; --chip: #272b33; --shadow: 0 1px 2px rgba(0,0,0,.4);
+} }
+:root[data-theme="dark"] {
+	--bg: #14161a; --panel: #1d2026; --col: #181b20; --ink: #e6e7ea; --muted: #9096a0; --line: #2c3038;
+	--accent: #6d9bff; --ok: #4fbf82; --warn: #e0a040; --bad: #e86a55; --chip: #272b33; --shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0 8px 0 0; }
+.chips { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
+.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 10px; white-space: nowrap; cursor: pointer; font: inherit; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip .n { opacity: .7; margin-left: 4px; }
+.status { color: var(--muted); font-size: 12px; white-space: nowrap; }
+button.icon { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 4px 9px; cursor: pointer; font: inherit; }
+main { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 1fr); gap: 12px; padding: 12px 16px 24px; overflow-x: auto; scroll-snap-type: x mandatory; min-height: calc(100vh - 60px); }
+.column { background: var(--col); border-radius: 12px; padding: 8px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.column h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 4px 6px; display: flex; justify-content: space-between; }
+.column.over { outline: 2px dashed var(--accent); outline-offset: -4px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; box-shadow: var(--shadow); cursor: pointer; }
+.card:focus-visible { outline: 2px solid var(--accent); }
+.card .proj { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.card .title { font-weight: 600; margin: 3px 0 6px; overflow-wrap: anywhere; }
+.bar { height: 5px; background: var(--chip); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--ok); }
+.card .now, .card .next { font-size: 12px; color: var(--muted); margin-top: 6px; overflow-wrap: anywhere; }
+.card .next b { color: var(--ink); font-weight: 600; }
+.pending { font-size: 11px; color: var(--warn); }
+dialog { border: none; padding: 0; background: var(--panel); color: var(--ink); width: min(720px, 100vw); max-height: 100vh; margin: auto 0 auto auto; height: 100vh; box-shadow: -4px 0 24px rgba(0,0,0,.25); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog .in { padding: 16px; overflow-y: auto; height: 100%; }
+dialog h3 { margin: 0 0 4px; font-size: 18px; overflow-wrap: anywhere; }
+.meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+select, input[type=text], input[type=password], textarea { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; }
+textarea { width: 100%; min-height: 56px; }
+.steps { list-style: none; padding: 0; margin: 8px 0; }
+.steps li { display: flex; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); align-items: flex-start; }
+.steps li.done .t { color: var(--muted); text-decoration: line-through; }
+.steps li.skipped .t { color: var(--muted); font-style: italic; }
+.steps .auto { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+.steps details { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.steps pre, pre.cp { white-space: pre-wrap; font: 12px/1.45 ui-monospace, Consolas, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; overflow-x: auto; max-height: 360px; }
+h4 { margin: 16px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.hist { font-size: 12px; color: var(--muted); }
+.hist div { padding: 2px 0; overflow-wrap: anywhere; }
+.btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; }
+.btn.ghost { background: none; color: var(--ink); border: 1px solid var(--line); }
+.empty { color: var(--muted); font-size: 12px; text-align: center; padding: 12px; }
+#err { color: var(--bad); padding: 8px 16px; display: none; }
+@media (max-width: 640px) {
+	main { grid-auto-columns: calc(100vw - 48px); min-height: calc(100vh - 100px); }
+	header .chips { order: 5; flex-basis: 100%; }
+	header .status { margin-left: auto; }
+	dialog { width: 100vw; }
+}
+</style>
+</head>
+<body>
+<header>
+	<h1>Task Board</h1>
+	<div class="chips" id="projects" role="toolbar" aria-label="Projects"></div>
+	<span class="status" id="status"></span>
+	<button class="icon" id="refresh" title="Refresh">↻</button>
+	<button class="icon" id="settingsBtn" title="Settings">⚙</button>
+</header>
+<div id="err"></div>
+<main id="board" aria-label="Columns"></main>
+
+<dialog id="card"><div class="in" id="cardIn"></div></dialog>
+
+<dialog id="settings"><div class="in">
+	<h3>Settings</h3>
+	<p class="meta">On this PC the page talks to <code>board serve</code>. Anywhere else (the phone, with the PC off) it reads the
+	board from your private GitHub data repo and leaves each edit there as a small inbox file. The next <code>board sync</code> on
+	the PC applies it. The token stays in this browser only: make a fine-grained token for that one repo with Contents read and write.</p>
+	<div class="row"><label>Owner <input type="text" id="ghOwner" placeholder="your-github-name"></label></div>
+	<div class="row"><label>Repo <input type="text" id="ghRepo" placeholder="taskboard-data"></label></div>
+	<div class="row"><label>Branch <input type="text" id="ghBranch" placeholder="main"></label></div>
+	<div class="row"><label>Token <input type="password" id="ghToken" placeholder="github_pat_..."></label></div>
+	<div class="row"><label>Theme <select id="theme"><option value="">system</option><option value="light">light</option><option value="dark">dark</option></select></label></div>
+	<div class="row"><button class="btn" id="saveSettings">Save</button><button class="btn ghost" id="closeSettings">Close</button></div>
+</div></dialog>
+
+<script>
+const LABEL = { backlog: "Backlog", planned: "Planned", doing: "Doing", blocked: "Blocked", review: "Review", done: "Done" };
+const store = {
+	get(k, d = "") { try { return localStorage.getItem("tb." + k) ?? d; } catch { return d; } },
+	set(k, v) { try { localStorage.setItem("tb." + k, v); } catch {} },
+};
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let state = { board: null, project: store.get("project", "all"), mode: null, pending: [] };
+
+// ---- two backends: the local server, or the GitHub data repo ----------------------------------------------------
+const gh = () => ({ owner: store.get("ghOwner"), repo: store.get("ghRepo"), branch: store.get("ghBranch", "main") || "main", token: store.get("ghToken") });
+async function ghGet(file, raw = true) {
+	const c = gh();
+	const r = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${file}?ref=${encodeURIComponent(c.branch)}`,
+		{ headers: { Authorization: `Bearer ${c.token}`, Accept: raw ? "application/vnd.github.raw+json" : "application/vnd.github+json" }, cache: "no-store" });
+	if (!r.ok) throw new Error(`GitHub ${r.status} on ${file}`);
+	return raw ? r.text() : r.json();
+}
+async function ghPut(file, text, message) {
+	const c = gh();
+	const r = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${file}`, {
+		method: "PUT", headers: { Authorization: `Bearer ${c.token}`, Accept: "application/vnd.github+json" },
+		body: JSON.stringify({ message, branch: c.branch, content: btoa(unescape(encodeURIComponent(text))) }),
+	});
+	if (!r.ok) throw new Error(`GitHub ${r.status}: ${(await r.json().catch(() => ({}))).message || "write failed"}`);
+}
+const api = {
+	async detect() {
+		try { const r = await fetch("api/board", { cache: "no-store" }); if (r.ok) { state.mode = "local"; return r.json(); } } catch {}
+		state.mode = "github";
+		if (!gh().owner || !gh().repo || !gh().token) { $("#settings").showModal(); throw new Error("Set the GitHub data repo in Settings (⚙) to read the board here."); }
+		return JSON.parse(await ghGet("board.json"));
+	},
+	async board() {
+		if (state.mode === "local") return (await fetch("api/board", { cache: "no-store" })).json();
+		const b = JSON.parse(await ghGet("board.json"));
+		// An edit the PC has synced since is in board.json now; only newer ones still wait.
+		const synced = new Date(String(b.at).replace(" ", "T") + "Z");
+		state.pending = state.pending.filter((p) => new Date(p.at) > synced);
+		return b;
+	},
+	async job(id) {
+		if (state.mode === "local") return state.board.jobs.find((j) => j.id === id);
+		return JSON.parse(await ghGet(`jobs/${id}.json`));
+	},
+	async checkpoint(id) {
+		if (state.mode === "local") return (await fetch(`api/checkpoint/${id}`, { cache: "no-store" })).text();
+		return ghGet(`checkpoints/${id}.md`).catch(() => "(no checkpoint synced yet)");
+	},
+	async op(op) {
+		if (state.mode === "local") {
+			const r = await fetch("api/op", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(op) });
+			if (!r.ok) throw new Error((await r.json()).error);
+			return;
+		}
+		const name = `${new Date().toISOString().replace(/[-:.]/g, "")}-${Math.random().toString(36).slice(2, 8)}.json`;
+		const at = new Date().toISOString();
+		await ghPut(`inbox/${name}`, JSON.stringify({ ...op, at }), `board: ${op.op} #${op.job} (phone)`);
+		state.pending.push({ ...op, at });
+	},
+};
+
+// ---- drawing ----------------------------------------------------------------------------------------------------
+function showError(e) { const el = $("#err"); el.textContent = e ? String(e.message || e) : ""; el.style.display = e ? "block" : "none"; }
+function pendingFor(id) { return state.pending.filter((p) => Number(p.job) === id); }
+function colOf(j) { const mv = pendingFor(j.id).filter((p) => p.op === "move").pop(); return mv ? mv.column : j.column; }
+
+function drawProjects() {
+	const b = state.board;
+	const open = (p) => b.jobs.filter((j) => j.column !== "done" && (p === "all" || j.project === p)).length;
+	const names = ["all", ...b.projects.map((p) => p.name)];
+	$("#projects").innerHTML = names.map((n) => `<button class="chip" data-p="${esc(n)}" aria-pressed="${state.project === n}">${n === "all" ? "All projects" : esc(n)}<span class="n">${open(n)}</span></button>`).join("");
+}
+function drawBoard() {
+	const b = state.board;
+	const jobs = b.jobs.filter((j) => state.project === "all" || j.project === state.project);
+	$("#board").innerHTML = b.columns.map((c) => {
+		const list = jobs.filter((j) => colOf(j) === c);
+		return `<section class="column" data-col="${c}"><h2><span>${LABEL[c] || c}</span><span>${list.length}</span></h2>${
+			list.map(cardHtml).join("") || `<div class="empty">nothing here</div>`}</section>`;
+	}).join("");
+	$("#status").textContent = `${state.mode === "local" ? "this PC" : "GitHub"} · ${b.at}`;
+}
+function cardHtml(j) {
+	const p = j.progress || { done: 0, total: 0 };
+	const pct = p.total ? Math.round((100 * p.done) / p.total) : 0;
+	const pend = pendingFor(j.id).length;
+	return `<article class="card" tabindex="0" draggable="true" data-id="${j.id}">
+		<div class="proj"><span>${esc(j.project)}</span><span>#${j.id} · ${esc(j.kind)}</span></div>
+		<div class="title">${esc(j.title)}</div>
+		${p.total ? `<div class="bar" title="${p.done}/${p.total} milestones"><i style="width:${pct}%"></i></div>` : ""}
+		${p.current ? `<div class="now">${p.done}/${p.total} · now: ${esc(p.current.title)}</div>` : p.total ? `<div class="now">${p.done}/${p.total} milestones</div>` : ""}
+		${j.next ? `<div class="next"><b>Next:</b> ${esc(j.next)}</div>` : ""}
+		${pend ? `<div class="pending">${pend} edit(s) waiting for the PC's next sync</div>` : ""}
+	</article>`;
+}
+
+async function openCard(id) {
+	const d = $("#card");
+	$("#cardIn").innerHTML = `<p class="meta">loading #${id}…</p>`;
+	if (!d.open) d.showModal();
+	try {
+		const j = await api.job(id);
+		const cp = await api.checkpoint(id);
+		const p = j.progress || { done: 0, total: 0 };
+		$("#cardIn").innerHTML = `
+			<div class="row" style="justify-content:space-between"><h3>#${j.id} ${esc(j.title)}</h3><button class="btn ghost" data-close>Close</button></div>
+			<div class="meta">${esc(j.project)} · ${esc(j.kind)}${j.ref ? ` · ${esc(j.ref)}` : ""} · ${p.done}/${p.total} milestones · updated ${esc(j.updated)}</div>
+			<div class="row"><label>Column <select data-move>${state.board.columns.map((c) => `<option value="${c}" ${c === colOf(j) ? "selected" : ""}>${LABEL[c]}</option>`).join("")}</select></label></div>
+			<h4>Next</h4>
+			<textarea data-next placeholder="what a later chat starts from">${esc(j.next || "")}</textarea>
+			<div class="row"><button class="btn" data-savenext>Save next</button></div>
+			<h4>Milestones</h4>
+			<ul class="steps">${(j.steps || []).map((s) => `<li class="${s.state}">
+				<input type="checkbox" data-step="${s.pos}" ${s.state === "done" ? "checked" : ""} aria-label="${esc(s.title)}">
+				<div><span class="t">${s.pos}. ${esc(s.title)}</span>${s.auto ? `<span class="auto" title="ticked by a file check">auto</span>` : ""}${s.doneAt ? `<span class="meta"> · ${esc(s.doneAt)}</span>` : ""}
+				${s.log ? `<details><summary>journal for this milestone</summary><pre>${esc(s.log)}</pre></details>` : ""}</div></li>`).join("") || `<li class="empty">no steps yet</li>`}</ul>
+			<h4>Note</h4>
+			<textarea data-note placeholder="a line for the card's history"></textarea>
+			<div class="row"><button class="btn" data-savenote>Add note</button></div>
+			<h4>Checkpoint (what a new chat continues from)</h4>
+			<pre class="cp">${esc(cp)}</pre>
+			<h4>History</h4>
+			<div class="hist">${(j.history || []).slice().reverse().map((e) => `<div>${esc(e.at)} · ${esc(e.kind)}${e.text ? `: ${esc(e.text)}` : ""}</div>`).join("") || "(synced cards carry their history)"}</div>
+			<h4>Continue in a chat</h4>
+			<div class="row"><code>board resume ${j.id}</code><button class="btn ghost" data-copy="board resume ${j.id}">Copy</button></div>`;
+		const run = async (op) => { try { await api.op({ ...op, job: j.id }); await refresh(); openCard(j.id); } catch (e) { showError(e); } };
+		const box = $("#cardIn");
+		box.querySelector("[data-close]").onclick = () => d.close();
+		box.querySelector("[data-move]").onchange = (e) => run({ op: "move", column: e.target.value });
+		box.querySelector("[data-savenext]").onclick = () => run({ op: "next", text: box.querySelector("[data-next]").value });
+		box.querySelector("[data-savenote]").onclick = () => { const t = box.querySelector("[data-note]").value.trim(); if (t) run({ op: "note", text: t }); };
+		box.querySelectorAll("[data-step]").forEach((c) => (c.onchange = () => run({ op: c.checked ? "tick" : "untick", step: c.dataset.step })));
+		box.querySelector("[data-copy]").onclick = (e) => navigator.clipboard?.writeText(e.target.dataset.copy);
+	} catch (e) { $("#cardIn").innerHTML = `<p class="meta">${esc(e.message)}</p><button class="btn ghost" data-close>Close</button>`; $("#cardIn [data-close]").onclick = () => d.close(); }
+}
+
+async function refresh() {
+	try {
+		const first = !state.board;
+		state.board = first ? await api.detect() : await api.board();
+		showError(null); drawProjects(); drawBoard();
+		// Open on the work in progress, not on an empty Backlog (on a phone one column fills the screen).
+		if (first) $(`.column[data-col="doing"]`)?.scrollIntoView({ inline: "start", block: "nearest" });
+	}
+	catch (e) { showError(e); }
+}
+
+// ---- events -----------------------------------------------------------------------------------------------------
+$("#projects").onclick = (e) => { const b = e.target.closest("[data-p]"); if (!b) return; state.project = b.dataset.p; store.set("project", state.project); drawProjects(); drawBoard(); };
+$("#board").onclick = (e) => { const c = e.target.closest(".card"); if (c) openCard(Number(c.dataset.id)); };
+$("#board").onkeydown = (e) => { const c = e.target.closest(".card"); if (c && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openCard(Number(c.dataset.id)); } };
+$("#board").ondragstart = (e) => { const c = e.target.closest(".card"); if (c) e.dataTransfer.setData("text/plain", c.dataset.id); };
+$("#board").ondragover = (e) => { const col = e.target.closest(".column"); if (col) { e.preventDefault(); document.querySelectorAll(".over").forEach((x) => x.classList.remove("over")); col.classList.add("over"); } };
+$("#board").ondragleave = (e) => { const col = e.target.closest(".column"); if (col && !col.contains(e.relatedTarget)) col.classList.remove("over"); };
+$("#board").ondrop = async (e) => {
+	const col = e.target.closest(".column"); if (!col) return; e.preventDefault(); col.classList.remove("over");
+	const id = Number(e.dataTransfer.getData("text/plain"));
+	try { await api.op({ op: "move", job: id, column: col.dataset.col }); await refresh(); } catch (err) { showError(err); }
+};
+$("#card").onclick = (e) => { if (e.target === $("#card")) $("#card").close(); };
+$("#refresh").onclick = refresh;
+$("#settingsBtn").onclick = () => { for (const k of ["ghOwner", "ghRepo", "ghBranch", "ghToken"]) $("#" + k).value = store.get(k); $("#theme").value = store.get("theme"); $("#settings").showModal(); };
+$("#closeSettings").onclick = () => $("#settings").close();
+$("#saveSettings").onclick = () => {
+	for (const k of ["ghOwner", "ghRepo", "ghBranch", "ghToken"]) store.set(k, $("#" + k).value.trim());
+	store.set("theme", $("#theme").value); applyTheme(); $("#settings").close(); state.board = null; refresh();
+};
+function applyTheme() { const t = store.get("theme"); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
+applyTheme();
+refresh();
+setInterval(() => { if (!$("#card").open && document.visibilityState === "visible") refresh(); }, 15000);
+</script>
+</body>
+</html>
