@@ -5,8 +5,9 @@
 //   prompt  UserPromptSubmit  the chat is recorded; the first message of a chat with no job is reminded of the board
 //   tool    PostToolUse    the rolling checkpoint of the chat's job is rewritten (where the whole job stands, the last
 //                          actions); a TodoWrite plan on a generic job becomes its steps
-//   stop    Stop           milestone files are checked and the checkpoint rewritten at the end of every turn
-//   allow   PreToolUse     the board's own commands run without a permission prompt (not sync, which pushes, or serve)
+//   stop    Stop           milestone files are checked and the checkpoint rewritten at the end of every turn; once a
+//                          remote is set, `board sync` runs in the background (at most every 5 minutes)
+//   allow   PreToolUse     the board's own commands run without a permission prompt (not serve, which runs until stopped)
 // Never blocks the session: any error is swallowed.
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,7 +24,7 @@ async function main(action, ev) {
 		if (!m) return;
 		const rest = (m[2] ?? "").trim();
 		const sub = rest.split(/\s+/)[0] || "overview";
-		if (["sync", "serve"].includes(sub)) return;
+		if (sub === "serve") return; // runs until stopped; sync is allowed (user, 2026-11-22: sync with no approvals)
 		if (!/^(?:[\w#.\-/:]+|"(?:[^"\\$`]|\\[^$`])*"|'[^']*'|\s+)*$/.test(rest)) return;
 		process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: `Task board: ${sub}` } }));
 		return;
@@ -89,6 +90,7 @@ async function main(action, ev) {
 		return;
 	}
 	if (action === "stop") {
+		(await import("../lib/sync.mjs")).syncSoon(CLI);
 		if (!job) return;
 		if (job.ref) B.check(job.id, sid);
 		B.writeCheckpoint(job.id, sid);

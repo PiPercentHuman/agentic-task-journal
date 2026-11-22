@@ -40,8 +40,8 @@ chat (Claude Code) ──hooks──▶ data/board.db (SQLite, WAL: many chats a
 | SessionStart (compact, resume, /clear) | the job's checkpoint, if the chat is on one |
 | UserPromptSubmit | the chat is recorded; the first message of a chat with no job is reminded of the board |
 | PostToolUse | the checkpoint is rewritten; a TodoWrite plan on a generic job becomes its steps |
-| Stop | milestone file checks, checkpoint rewritten |
-| PreToolUse (Bash/PowerShell) | the board's own commands run without a permission prompt (not `sync` or `serve`) |
+| Stop | milestone file checks, checkpoint rewritten, background sync (every 5 min at most, once a remote is set) |
+| PreToolUse (Bash/PowerShell) | the board's own commands run without a permission prompt (not `serve`) |
 
 A chat that continues after an AgentJournal `sleep` + `/clear` writes to the same journal folder and is put back on
 the same job by itself.
@@ -81,8 +81,13 @@ become small files in `inbox/` (one per edit, so the phone and the PC never writ
    data, and the token never leaves the phone's browser.
 4. On the phone: a fine-grained token for **taskboard-data only**, Contents read and write. Open the Pages URL, put
    owner, repo and token in Settings, then "Add to Home Screen".
-5. Sync on a timer so phone edits land while you are away:
-   `schtasks /create /sc minute /mo 10 /tn taskboard-sync /tr "node D:\Claude_ws\taskboard\bin\board.mjs sync"`.
+5. Nothing to approve after that. Sync is plain `git push`/`pull` with the GitHub login Windows already stores; it
+   never opens a prompt or a login window (it logs a failure to `data/sync.log` instead). It runs by itself:
+   * at the end of every chat turn, in the background, at most every 5 minutes (`TASKBOARD_SYNC_MINUTES`);
+   * on a timer, so phone edits land while no chat is open:
+     `schtasks /create /sc minute /mo 10 /tn taskboard-sync /tr "node D:\Claude_ws\taskboard\bin\board.mjs sync"`.
+
+   The phone signs in once: the token is saved in its browser.
 
 ## Ticket systems
 

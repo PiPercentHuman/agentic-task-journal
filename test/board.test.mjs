@@ -64,7 +64,8 @@ test("phone edits in the inbox are applied by sync and the cards exported", () =
 test("only the board call alone is allowed without a prompt", () => {
 	const ask = (command) => hook("allow", { session_id: "x", tool_input: { command } });
 	assert.match(ask(`node "${CLI}" tick 1 build`), /"allow"/);
-	assert.equal(ask(`node "${CLI}" sync`), "");
+	assert.match(ask(`node "${CLI}" sync`), /"allow"/);
+	assert.equal(ask(`node "${CLI}" serve`), "");
 	assert.equal(ask(`node "${CLI}" note 1 "$(whoami)"`), "");
 	assert.equal(ask(`node "${CLI}" list; rm -rf x`), "");
 });
