@@ -15,6 +15,14 @@
 //   board done <id>                        Done, with every chat's AgentJournal pins + journal kept as the job's log
 //   board check [<id>]                     tick the milestones whose files are now there
 //   board note <id> "<line>"               a line in the card's history
+//   board req <id> "<requirement>"         one requirement, as it stands (the report lists them, numbered)
+//   board summary <id> "<text>"            what was done, why, and how it was verified (top of the report)
+//   board report <id> [--write]            the end-of-task report: summary, requirements (written + the user's own
+//                                          words with how each stands now), decisions, work done, files changed,
+//                                          verification, the PR, what is still open
+//   board pr <id> [--base main] [--draft] [--title "..."]
+//                                          push the branch and open a pull request with the report as its body (gh)
+//   board pr <id> --status                 follow the PR: merged ticks "merged"; with a summary written, the job is done
 //   board list [--all]                     every job (open only unless --all)
 //   board checkpoint <id>                  rewrite and print the checkpoint
 //   board sync                             export cards to data/, apply phone edits, git commit, push if a remote is set
@@ -39,19 +47,20 @@ for (let i = 0; i < argv.length; i++) {
 const [cmd, ...rest] = args;
 
 // The project is the folder Claude Code was opened on, else the nearest git or .agentjournal folder above here.
-function projectDir() {
-	if (flags.project) return path.resolve(flags.project);
+function chatDir() {
 	if (process.env.CLAUDE_PROJECT_DIR) return process.env.CLAUDE_PROJECT_DIR;
 	for (let d = process.cwd(); ; d = path.dirname(d)) {
 		if (fs.existsSync(path.join(d, ".git")) || fs.existsSync(path.join(d, ".agentjournal"))) return d;
 		if (path.dirname(d) === d) return process.cwd();
 	}
 }
+// --project files a job under another project; the chat (and its journal) stays where it runs.
+const projectDir = () => (flags.project ? path.resolve(flags.project) : chatDir());
 const sid = process.env.CLAUDE_CODE_SESSION_ID || null;
 const here = projectDir();
 function me() {
 	if (!sid) return null;
-	return S.seeSession(sid, { project_id: S.project(here).id, journal_dir: J.journalDir(here, sid) ?? undefined });
+	return S.seeSession(sid, { project_id: S.project(chatDir()).id, journal_dir: J.journalDir(chatDir(), sid) ?? undefined });
 }
 const die = (m) => { console.error(`board: ${m}`); process.exit(2); };
 const needJob = (id) => S.job(id) ?? die(`no job ${id ?? "(give a job number)"}`);
@@ -80,16 +89,16 @@ try {
 			break;
 		}
 		case "kinds":
-			for (const t of B.templates()) out(`${t.kind}: ${t.description}\n${t.steps.map((s, i) => `  ${i + 1}. ${s.title}${s.done_when ? `  [auto: ${JSON.stringify(s.done_when)}]` : ""}`).join("\n")}`);
+			for (const t of B.templates(here)) out(`${t.kind}: ${t.description}\n${t.steps.map((s, i) => `  ${i + 1}. ${s.title}${s.done_when ? `  [auto: ${JSON.stringify(s.done_when)}]` : ""}`).join("\n")}`);
 			break;
 		case "new": {
 			const title = rest.join(" ").trim() || die('usage: board new "<title>" [--kind K] [--ref path] [--col doing]');
 			const kind = flags.kind || "generic";
-			const tpl = B.template(kind) ?? die(`no kind "${kind}" (board kinds)`);
+			const tpl = B.template(kind, here) ?? die(`no kind "${kind}" (board kinds)`);
 			const s = me();
 			const j = S.newJob({ projectId: S.project(here).id, title, kind, ref: flags.ref ? String(flags.ref).replace(/\\/g, "/") : null, col: flags.col || "doing", steps: tpl.steps }, sid);
 			if (s) S.attach(sid, j.id);
-			if (j.ref) B.check(j.id, sid);
+			B.check(j.id, sid);
 			B.writeCheckpoint(j.id, sid);
 			show(S.job(j.id));
 			break;
@@ -99,7 +108,7 @@ try {
 			const j = needJob(rest[0]);
 			if (me()) S.attach(sid, j.id);
 			if (j.col === "planned" || j.col === "backlog") S.move(j.id, "doing", sid);
-			if (j.ref) B.check(j.id, sid);
+			B.check(j.id, sid);
 			const text = B.writeCheckpoint(j.id, sid);
 			out(cmd === "resume" ? text : `attached to #${j.id} ${j.title}`);
 			break;
@@ -142,11 +151,15 @@ try {
 		case "done": {
 			const j = needJob(rest[0]);
 			me();
-			out(`#${j.id} done; every chat's pins + journal kept in ${B.finish(j.id, sid).replace(/\\/g, "/")}`);
+			const logs = B.finish(j.id, sid).replace(/\\/g, "/");
+			const { report } = await import("../lib/report.mjs");
+			out(report(j.id));
+			out(`\n#${j.id} done. Report: ${S.HOME.replace(/\\/g, "/")}/reports/${j.id}.md; every chat's pins + journal: ${logs}`);
+			if (!S.job(j.id).summary) out(`(no summary written: \`board summary ${j.id} "..."\`, then \`board report ${j.id} --write\`)`);
 			break;
 		}
 		case "check": {
-			const list = rest[0] ? [needJob(rest[0])] : S.jobs("j.col != 'done' and j.ref is not null");
+			const list = rest[0] ? [needJob(rest[0])] : S.jobs("j.col != 'done'");
 			for (const j of list) {
 				const t = B.check(j.id, sid);
 				if (t.length) { B.writeCheckpoint(j.id, sid); out(`#${j.id}: ticked ${t.map((s) => s.key || s.pos).join(", ")}`); }
@@ -159,6 +172,37 @@ try {
 			S.event(j.id, "note", rest.slice(1).join(" "), sid);
 			B.writeCheckpoint(j.id, sid);
 			out(`#${j.id}: noted`);
+			break;
+		}
+		case "req": {
+			const j = needJob(rest[0]);
+			const text = rest.slice(1).join(" ").trim() || die('usage: board req <id> "<one requirement>"');
+			me();
+			S.event(j.id, "requirement", text, sid);
+			B.writeCheckpoint(j.id, sid);
+			out(`#${j.id}: requirement ${S.events(j.id, 100000).filter((e) => e.kind === "requirement").length} written`);
+			break;
+		}
+		case "summary": {
+			const j = needJob(rest[0]);
+			S.setField(j.id, "summary", rest.slice(1).join(" ").trim() || die('usage: board summary <id> "<text>"'), sid);
+			B.check(j.id, sid);
+			B.writeCheckpoint(j.id, sid);
+			out(`#${j.id}: summary written`);
+			break;
+		}
+		case "report": {
+			const j = needJob(rest[0]);
+			const { report, writeReport } = await import("../lib/report.mjs");
+			if (flags.write) { const r = writeReport(j.id); out(r.text); out(`\n(written to ${r.file})`); } else out(report(j.id));
+			break;
+		}
+		case "pr": {
+			const j = needJob(rest[0]);
+			me();
+			const P = await import("../lib/pr.mjs");
+			if (flags.status) { const st = P.prStatus(j.id, sid); out(`#${j.id} PR ${st.url}: ${st.state}${st.reviewDecision ? `, ${st.reviewDecision}` : ""}${S.job(j.id).col === "done" ? " - job done" : ""}`); }
+			else { const pr = P.openPr(j.id, { base: flags.base, draft: !!flags.draft, title: flags.title, sessionId: sid }); out(`#${j.id} PR ${pr.url} (${pr.state})`); }
 			break;
 		}
 		case "list":

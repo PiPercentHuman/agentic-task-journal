@@ -1,0 +1,10 @@
+{
+  "kind": "research",
+  "description": "A question answered from sources: what was asked, what was found, how sure, what is still open.",
+  "steps": [
+    { "key": "question", "title": "The question and what a good answer looks like (board req)" },
+    { "key": "sources", "title": "Sources gathered and read first-hand" },
+    { "key": "findings", "title": "Findings, each with its source" },
+    { "key": "summary", "title": "Summary written (board summary): the answer, the confidence, the open questions", "done_when": { "summary": true } }
+  ]
+}

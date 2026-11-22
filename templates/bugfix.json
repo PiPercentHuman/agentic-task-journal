@@ -1,0 +1,15 @@
+{
+  "kind": "bugfix",
+  "description": "A defect, end to end: from the report to a merged fix, with the requirements and a summary at the end. ref = the repo or folder the fix is in (optional).",
+  "steps": [
+    { "key": "report", "title": "The report understood: what happens, what should happen, where (requirements written with `board req`)" },
+    { "key": "reproduce", "title": "Reproduced: a failing test or a recorded run that shows it" },
+    { "key": "cause", "title": "Root cause found (the line and the reason, not the symptom)" },
+    { "key": "fix", "title": "Fixed on a branch" },
+    { "key": "verify", "title": "Verified: the failing test passes, the suite passes, the real thing run" },
+    { "key": "pr", "title": "Pull request opened (board pr)", "done_when": { "pr": "open" } },
+    { "key": "review", "title": "Review answered" },
+    { "key": "merged", "title": "Merged", "done_when": { "pr": "merged" } },
+    { "key": "summary", "title": "Summary written (board summary): cause, fix, how it was verified", "done_when": { "summary": true } }
+  ]
+}

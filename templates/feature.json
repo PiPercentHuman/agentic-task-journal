@@ -1,0 +1,15 @@
+{
+  "kind": "feature",
+  "description": "A new feature or tool, end to end: requirements, plan, build, tests, docs, pull request, merge, summary. ref = the repo or folder (optional).",
+  "steps": [
+    { "key": "requirements", "title": "Requirements written (board req): what it must do, for whom, the limits" },
+    { "key": "plan", "title": "Plan: the design and the files it touches" },
+    { "key": "build", "title": "Built on a branch" },
+    { "key": "test", "title": "Tested: new tests, the suite, and the real thing run" },
+    { "key": "docs", "title": "Docs and README updated" },
+    { "key": "pr", "title": "Pull request opened (board pr)", "done_when": { "pr": "open" } },
+    { "key": "review", "title": "Review answered" },
+    { "key": "merged", "title": "Merged", "done_when": { "pr": "merged" } },
+    { "key": "summary", "title": "Summary written (board summary): what shipped and what was left out", "done_when": { "summary": true } }
+  ]
+}

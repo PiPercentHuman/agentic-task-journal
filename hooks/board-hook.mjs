@@ -25,6 +25,7 @@ async function main(action, ev) {
 		const rest = (m[2] ?? "").trim();
 		const sub = rest.split(/\s+/)[0] || "overview";
 		if (sub === "serve") return; // runs until stopped; sync is allowed (user, 2026-11-22: sync with no approvals)
+		if (sub === "pr" && !/--status\b/.test(rest)) return; // opening a pull request is published work: the normal permission check
 		if (!/^(?:[\w#.\-/:]+|"(?:[^"\\$`]|\\[^$`])*"|'[^']*'|\s+)*$/.test(rest)) return;
 		process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: `Task board: ${sub}` } }));
 		return;
@@ -60,8 +61,11 @@ async function main(action, ev) {
 			...(o.others.length ? ["Other projects:", ...o.others.map((l) => `  ${l}`)] : []),
 			`When the user's request continues one of these jobs, run \`${BOARD} resume <id>\` and continue from its checkpoint without re-researching. ` +
 				`When it starts a real job (more than a quick question), run \`${BOARD} new "<title>" --kind <kind> [--ref <its folder>]\` ` +
-				`(kinds: ${B.templates().map((t) => t.kind).join(", ")}; a new video is full3d-video with --ref output/<slug>). ` +
-				`Then: \`${BOARD} tick <id> <step>\` as each milestone finishes, \`${BOARD} next <id> "<line>"\` before you stop, \`${BOARD} done <id>\` at the end.`,
+				`(kinds: ${B.templates(proj).map((t) => t.kind).join(", ")}). ` +
+				`Then: \`${BOARD} req <id> "<requirement>"\` for what it must do, \`${BOARD} tick <id> <step>\` as each milestone finishes, ` +
+					`\`${BOARD} next <id> "<line>"\` before you stop, \`${BOARD} pr <id>\` to open the pull request (code work), ` +
+					`and at the end \`${BOARD} summary <id> "<what was done, why, how it was verified>"\` then \`${BOARD} done <id>\` ` +
+					`(prints the requirements + summary report).`,
 		];
 		say("SessionStart", lines.join("\n"));
 		return;
@@ -92,7 +96,7 @@ async function main(action, ev) {
 	if (action === "stop") {
 		(await import("../lib/sync.mjs")).syncSoon(CLI);
 		if (!job) return;
-		if (job.ref) B.check(job.id, sid);
+		B.check(job.id, sid);
 		B.writeCheckpoint(job.id, sid);
 	}
 }

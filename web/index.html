@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#14161a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Task Board</title>
-<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Task%20Board%22%2C%22short_name%22%3A%22Board%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2314161a%22%2C%22theme_color%22%3A%22%2314161a%22%2C%22start_url%22%3A%22.%22%7D">
+<title>Agentic Task Journal</title>
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Agentic%20Task%20Journal%22%2C%22short_name%22%3A%22Tasks%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2314161a%22%2C%22theme_color%22%3A%22%2314161a%22%2C%22start_url%22%3A%22.%22%7D">
 <style>
 :root {
 	--bg: #f5f5f2; --panel: #ffffff; --col: #ecece7; --ink: #1d1f23; --muted: #6b6f76; --line: #d9d9d2;
@@ -76,7 +76,7 @@ h4 { margin: 16px 0 4px; font-size: 13px; text-transform: uppercase; letter-spac
 </head>
 <body>
 <header>
-	<h1>Task Board</h1>
+	<h1>Task Journal</h1>
 	<div class="chips" id="projects" role="toolbar" aria-label="Projects"></div>
 	<span class="status" id="status"></span>
 	<button class="icon" id="refresh" title="Refresh">↻</button>
@@ -93,7 +93,7 @@ h4 { margin: 16px 0 4px; font-size: 13px; text-transform: uppercase; letter-spac
 	board from your private GitHub data repo and leaves each edit there as a small inbox file. The next <code>board sync</code> on
 	the PC applies it. The token stays in this browser only: make a fine-grained token for that one repo with Contents read and write.</p>
 	<div class="row"><label>Owner <input type="text" id="ghOwner" placeholder="your-github-name"></label></div>
-	<div class="row"><label>Repo <input type="text" id="ghRepo" placeholder="taskboard-data"></label></div>
+	<div class="row"><label>Repo <input type="text" id="ghRepo" placeholder="task-journal-data"></label></div>
 	<div class="row"><label>Branch <input type="text" id="ghBranch" placeholder="main"></label></div>
 	<div class="row"><label>Token <input type="password" id="ghToken" placeholder="github_pat_..."></label></div>
 	<div class="row"><label>Theme <select id="theme"><option value="">system</option><option value="light">light</option><option value="dark">dark</option></select></label></div>
@@ -213,6 +213,9 @@ async function openCard(id) {
 			<h4>Next</h4>
 			<textarea data-next placeholder="what a later chat starts from">${esc(j.next || "")}</textarea>
 			<div class="row"><button class="btn" data-savenext>Save next</button></div>
+			<h4>Summary</h4>
+			<div class="meta" style="color:var(--ink)">${j.summary ? esc(j.summary) : "(not written yet)"}</div>
+			${(j.requirements || []).length ? `<h4>Requirements</h4><ol class="hist" style="color:var(--ink);padding-left:20px">${j.requirements.map((r) => `<li>${esc(r)}</li>`).join("")}</ol>` : ""}
 			<h4>Milestones</h4>
 			<ul class="steps">${(j.steps || []).map((s) => `<li class="${s.state}">
 				<input type="checkbox" data-step="${s.pos}" ${s.state === "done" ? "checked" : ""} aria-label="${esc(s.title)}">
