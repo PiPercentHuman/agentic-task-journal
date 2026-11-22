@@ -116,8 +116,24 @@ async function ghGet(file, raw = true) {
 	const c = gh();
 	const r = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${file}?ref=${encodeURIComponent(c.branch)}`,
 		{ headers: { Authorization: `Bearer ${c.token}`, Accept: raw ? "application/vnd.github.raw+json" : "application/vnd.github+json" }, cache: "no-store" });
-	if (!r.ok) throw new Error(`GitHub ${r.status} on ${file}`);
+	if (!r.ok) throw new Error(await whyNot(r.status, file, c));
 	return raw ? r.text() : r.json();
+}
+// A bare "404" says nothing: GitHub answers 404 for a private repo the token cannot see. Say which case it is.
+async function whyNot(status, file, c) {
+	const where = `${c.owner}/${c.repo}`;
+	if (status === 401) return "GitHub did not accept the token (expired, revoked or copied wrong). Make a new one and paste it in Settings (⚙).";
+	if (status === 403) return `The token may not read ${where}: give it Contents: Read and write on that repository.`;
+	if (status !== 404) return `GitHub answered ${status} for ${file}.`;
+	const repo = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}`, { headers: { Authorization: `Bearer ${c.token}` }, cache: "no-store" }).catch(() => null);
+	if (repo && repo.ok) {
+		const br = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/branches/${encodeURIComponent(c.branch)}`, { headers: { Authorization: `Bearer ${c.token}` }, cache: "no-store" }).catch(() => null);
+		if (br && !br.ok) return `${where} has no branch "${c.branch}". Set the branch in Settings (⚙), usually main.`;
+		return `${where} has no ${file} yet. Run \`board sync\` on the PC once.`;
+	}
+	return `The token cannot see ${where} (GitHub answers 404 for a private repo it is not allowed to open). ` +
+		`Check the spelling of owner and repo in Settings (⚙), and in the token's settings on github.com: ` +
+		`Repository access = Only select repositories, with ${c.repo} picked; Contents = Read and write; Resource owner = ${c.owner}.`;
 }
 async function ghPut(file, text, message) {
 	const c = gh();
