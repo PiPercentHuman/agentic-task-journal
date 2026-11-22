@@ -123,7 +123,7 @@ board sync [--no-push]                 board serve [--port 7420]          board 
 
 ## Tests
 
-`npm test`: 13 tests on a scratch board, project and settings file; no model, no network.
+`npm test`: 15 tests on a scratch board, project and settings file; no model, no network.
 
 ## Licence
 

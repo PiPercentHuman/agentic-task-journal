@@ -154,3 +154,21 @@ test("a public report (a PR body) leaves out the user's own words and the local 
 	assert.match(r, /1\. Invoices export as CSV/);
 	assert.match(report(1), /with semicolons as the separator/); // the local report keeps them
 });
+
+test("a job's report only reads the journal from where the job began in that chat", () => {
+	fs.appendFileSync(path.join(jdir, "JOURNAL.md"), "6. NOTE something about another job\n");
+	board("new", "Second job", "--kind", "generic");
+	fs.appendFileSync(path.join(jdir, "JOURNAL.md"), "7. Edit src/second.js\n");
+	const r = board("report", "3");
+	assert.match(r, /src\/second\.js/);
+	assert.doesNotMatch(r, /src\/export\.js/);
+	assert.doesNotMatch(r, /something about another job/);
+});
+
+test("a PR body carries nothing read from the journal", async () => {
+	process.env.ATJ_HOME = home;
+	const { report } = await import("../lib/report.mjs");
+	const r = report(1, { public: true, files: [] });
+	for (const h of ["## Decisions", "## Verification", "Topics closed", "kept the old JSON export", "`npm test`"]) assert.ok(!r.includes(h), h);
+	assert.doesNotMatch(r, /Pull request opened/);
+});
