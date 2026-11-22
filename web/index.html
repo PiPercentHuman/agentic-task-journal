@@ -292,6 +292,13 @@ $("#saveSettings").onclick = () => {
 };
 function applyTheme() { const t = store.get("theme"); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
 applyTheme();
+// The link setup prints (…/web/#owner=me&repo=taskboard) fills Settings in; only the token is left to paste.
+(() => {
+	const h = new URLSearchParams(location.hash.slice(1));
+	if (!h.get("owner") && !h.get("repo")) return;
+	for (const [k, q] of [["ghOwner", "owner"], ["ghRepo", "repo"], ["ghBranch", "branch"]]) if (h.get(q)) store.set(k, h.get(q));
+	history.replaceState(null, "", location.pathname);
+})();
 refresh();
 setInterval(() => { if (!$("#card").open && document.visibilityState === "visible") refresh(); }, 15000);
 </script>

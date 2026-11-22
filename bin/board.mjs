@@ -25,7 +25,8 @@
 //   board pr <id> --status                 follow the PR: merged ticks "merged"; with a summary written, the job is done
 //   board list [--all]                     every job (open only unless --all)
 //   board checkpoint <id>                  rewrite and print the checkpoint
-//   board sync                             export cards to data/, apply phone edits, git commit, push if a remote is set
+//   board sync                             export the cards, apply phone edits, git commit, push if a remote is set
+//   board schedule on|off|status [--minutes 15]   background sync on a timer (Task Scheduler, launchd or cron)
 //   board serve [--port 7420] [--host 127.0.0.1]   the kanban page
 //   board kinds                            the job kinds and their milestones
 import fs from "node:fs";
@@ -211,6 +212,14 @@ try {
 		case "checkpoint":
 			out(B.writeCheckpoint(needJob(rest[0]).id, sid));
 			break;
+		case "schedule": {
+			const sched = await import("../lib/schedule.mjs");
+			const what = rest[0] || "status";
+			if (what === "status") out(`background sync: ${sched.status()}`);
+			else if (what === "on" || what === "off") out(`background sync ${sched.apply(what === "on", { minutes: flags.minutes })}`);
+			else die("usage: board schedule on|off|status [--minutes 15]");
+			break;
+		}
 		case "sync": {
 			const { sync } = await import("../lib/sync.mjs");
 			out(sync({ push: !flags["no-push"] }));

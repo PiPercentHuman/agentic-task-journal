@@ -172,3 +172,25 @@ test("a PR body carries nothing read from the journal", async () => {
 	for (const h of ["## Decisions", "## Verification", "Topics closed", "kept the old JSON export", "`npm test`"]) assert.ok(!r.includes(h), h);
 	assert.doesNotMatch(r, /Pull request opened/);
 });
+
+test("background sync is planned with each system's own scheduler", async () => {
+	const { plan } = await import("../lib/schedule.mjs");
+	const w = plan({ minutes: 15, platform: "win32", node: "C:/node.exe", root: "C:/atj" });
+	assert.equal(w.kind, "Windows Task Scheduler");
+	assert.deepEqual(w.on[0][1].slice(0, 6), ["/create", "/f", "/sc", "minute", "/mo", "15"]);
+	assert.match(w.on[0][1].at(-1), /wscript\.exe \/\/nologo ".*sync-hidden\.vbs" "C:\/node\.exe"/);
+	const m = plan({ minutes: 15, platform: "darwin", node: "/usr/local/bin/node", root: "/atj", home: "/Users/u" });
+	assert.match(m.files[0].path, /LaunchAgents[\/]com\.agentic-task-journal\.sync\.plist$/);
+	assert.match(m.files[0].content, /<integer>900<\/integer>/);
+	assert.match(plan({ minutes: 15, platform: "linux", node: "/usr/bin/node", root: "/atj" }).cron, /^\*\/15 \* \* \* \* "\/usr\/bin\/node" ".*board\.mjs" sync/);
+	assert.match(plan({ minutes: 120, platform: "linux", node: "n", root: "/atj" }).cron, /^0 \*\/2 \* \* \*/);
+});
+
+test("setup --dry-run walks every step and changes nothing", () => {
+	const settings = path.join(os.homedir(), ".claude", "settings.json");
+	const before = fs.existsSync(settings) ? fs.readFileSync(settings, "utf8") : null;
+	const out = execFileSync("node", [path.join(ROOT, "bin", "setup.mjs"), "--dry-run", "--no-github"], { env: { ...env, ATJ_HOME: path.join(home, "dry") }, encoding: "utf8" });
+	for (const s of ["1. Prerequisites", "2. Claude Code hooks", "3. The board's home", "4. A private GitHub repo", "5. Background sync", "6. Seeing the board"]) assert.ok(out.includes(s), s);
+	assert.ok(!fs.existsSync(path.join(home, "dry", ".git")));
+	assert.equal(fs.existsSync(settings) ? fs.readFileSync(settings, "utf8") : null, before);
+});
