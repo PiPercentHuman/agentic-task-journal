@@ -116,8 +116,24 @@ async function ghGet(file, raw = true) {
 	const c = gh();
 	const r = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${file}?ref=${encodeURIComponent(c.branch)}`,
 		{ headers: { Authorization: `Bearer ${c.token}`, Accept: raw ? "application/vnd.github.raw+json" : "application/vnd.github+json" }, cache: "no-store" });
-	if (!r.ok) throw new Error(`GitHub ${r.status} on ${file}`);
+	if (!r.ok) throw new Error(await whyNot(r.status, file, c));
 	return raw ? r.text() : r.json();
+}
+// A bare "404" says nothing: GitHub answers 404 for a private repo the token cannot see. Say which case it is.
+async function whyNot(status, file, c) {
+	const where = `${c.owner}/${c.repo}`;
+	if (status === 401) return "GitHub did not accept the token (expired, revoked or copied wrong). Make a new one and paste it in Settings (⚙).";
+	if (status === 403) return `The token may not read ${where}: give it Contents: Read and write on that repository.`;
+	if (status !== 404) return `GitHub answered ${status} for ${file}.`;
+	const repo = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}`, { headers: { Authorization: `Bearer ${c.token}` }, cache: "no-store" }).catch(() => null);
+	if (repo && repo.ok) {
+		const br = await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/branches/${encodeURIComponent(c.branch)}`, { headers: { Authorization: `Bearer ${c.token}` }, cache: "no-store" }).catch(() => null);
+		if (br && !br.ok) return `${where} has no branch "${c.branch}". Set the branch in Settings (⚙), usually main.`;
+		return `${where} has no ${file} yet. Run \`board sync\` on the PC once.`;
+	}
+	return `The token cannot see ${where} (GitHub answers 404 for a private repo it is not allowed to open). ` +
+		`Check the spelling of owner and repo in Settings (⚙), and in the token's settings on github.com: ` +
+		`Repository access = Only select repositories, with ${c.repo} picked; Contents = Read and write; Resource owner = ${c.owner}.`;
 }
 async function ghPut(file, text, message) {
 	const c = gh();
@@ -247,7 +263,9 @@ async function refresh() {
 		state.board = first ? await api.detect() : await api.board();
 		showError(null); drawProjects(); drawBoard();
 		// Open on the work in progress, not on an empty Backlog (on a phone one column fills the screen).
-		if (first) $(`.column[data-col="doing"]`)?.scrollIntoView({ inline: "start", block: "nearest" });
+		// Only sideways: scrollIntoView also moved the page down and hid the column titles under the header.
+		const doing = $(`.column[data-col="doing"]`);
+		if (first && doing && innerWidth < 700) $("#board").scrollLeft = doing.offsetLeft - $("#board").offsetLeft - 16;
 	}
 	catch (e) { showError(e); }
 }
@@ -274,6 +292,13 @@ $("#saveSettings").onclick = () => {
 };
 function applyTheme() { const t = store.get("theme"); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
 applyTheme();
+// The link setup prints (…/web/#owner=me&repo=taskboard) fills Settings in; only the token is left to paste.
+(() => {
+	const h = new URLSearchParams(location.hash.slice(1));
+	if (!h.get("owner") && !h.get("repo")) return;
+	for (const [k, q] of [["ghOwner", "owner"], ["ghRepo", "repo"], ["ghBranch", "branch"]]) if (h.get(q)) store.set(k, h.get(q));
+	history.replaceState(null, "", location.pathname);
+})();
 refresh();
 setInterval(() => { if (!$("#card").open && document.visibilityState === "visible") refresh(); }, 15000);
 </script>
